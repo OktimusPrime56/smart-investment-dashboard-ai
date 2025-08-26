@@ -2,7 +2,6 @@
 const cors = require('cors');
 const helmet = require('helmet');
 const compression = require('compression');
-const path = require('path');
 const WebSocket = require('ws');
 const http = require('http');
 
@@ -15,7 +14,6 @@ app.use(helmet({ contentSecurityPolicy: false }));
 app.use(compression());
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, '../frontend')));
 
 // Health Check
 app.get('/health', (req, res) => {
@@ -31,13 +29,7 @@ app.get('/health', (req, res) => {
             autoTrading: 'ready',
             germanLocalization: 'active'
         },
-        aiModels: ['gpt-4', 'claude-3', 'gemini-pro'],
-        apis: [
-            { name: 'Binance', status: 'ready' },
-            { name: 'CoinGecko', status: 'ready' },
-            { name: 'OpenAI', status: 'ready' },
-            { name: 'Anthropic', status: 'ready' }
-        ]
+        aiModels: ['gpt-4', 'claude-3', 'gemini-pro']
     });
 });
 
@@ -51,74 +43,29 @@ app.get('/api/providers', (req, res) => {
                 name: 'KI Trading Assistant',
                 type: 'ai',
                 description: 'OpenAI GPT-4 für intelligente Trading-Entscheidungen',
-                status: 'ready',
-                capabilities: ['trading-signals', 'market-analysis', 'risk-assessment']
+                status: 'ready'
             },
             {
                 id: 'sentiment_ai', 
                 name: 'Sentiment Analyse KI',
                 type: 'ai',
                 description: 'News und Social Media Sentiment Analyse',
-                status: 'ready',
-                capabilities: ['news-analysis', 'sentiment-scoring']
+                status: 'ready'
             },
             {
                 id: 'binance',
                 name: 'Binance Trading',
                 type: 'trading',
                 description: 'Crypto Trading und Portfolio Management',
-                status: 'ready',
-                capabilities: ['spot-trading', 'portfolio-data']
+                status: 'ready'
             },
             {
                 id: 'coingecko',
                 name: 'CoinGecko',
                 type: 'data',
                 description: 'Kostenlose Kryptowährungsdaten',
-                status: 'ready',
-                capabilities: ['market-data', 'price-data']
+                status: 'ready'
             }
-        ],
-        message: 'Alle Provider bereit für Konfiguration',
-        timestamp: new Date().toISOString()
-    });
-});
-
-app.get('/api/demo', (req, res) => {
-    res.json({
-        success: true,
-        message: 'S.I.D v2.0 KI-POWERED Demo für OktimusPrime56',
-        demo: {
-            aiSignal: {
-                signal: 'HOLD',
-                confidence: 85,
-                reasoning: 'Markt zeigt gemischte Signale, KI empfiehlt Abwarten',
-                model: 'Demo-Modus'
-            },
-            sentiment: {
-                score: 72,
-                trend: 'leicht positiv',
-                sources: 15,
-                keywords: ['bullish', 'rally', 'support']
-            },
-            portfolio: {
-                totalValue: 1000,
-                safeSavings: 800,
-                tradingCapital: 200,
-                dailyReturn: '+2.3%'
-            },
-            risk: {
-                level: 'medium',
-                score: 42,
-                recommendations: ['Position-Größe reduzieren', 'Stop-Loss setzen']
-            }
-        },
-        features: [
-            'KI-powered Trading Signals',
-            'Real-time Sentiment Analysis',
-            'Ultra-safe Auto-Trading',
-            '80/20 Investment Strategy',
-            'German Localization'
         ],
         timestamp: new Date().toISOString()
     });
@@ -136,50 +83,36 @@ app.post('/api/ai/advice', (req, res) => {
     });
 });
 
-// Serve Frontend
-app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/index.html'));
-});
-
-// WebSocket für Real-time Updates
-const wss = new WebSocket.Server({ server, path: '/ws' });
-wss.on('connection', (ws) => {
-    console.log('📱🤖 S.I.D Client connected');
-    
-    ws.send(JSON.stringify({
-        type: 'connected',
-        message: 'S.I.D v2.0 KI-POWERED Real-time ready',
-        owner: 'OktimusPrime56',
-        features: ['ai-signals', 'live-data', 'auto-trading']
-    }));
-    
-    // Demo updates every 10 seconds
-    const interval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'market_update',
-                data: {
-                    price: 45000 + (Math.random() - 0.5) * 1000,
-                    change: (Math.random() - 0.5) * 5,
-                    timestamp: Date.now()
-                }
-            }));
-        }
-    }, 10000);
-    
-    ws.on('close', () => {
-        clearInterval(interval);
-        console.log('📱🤖 S.I.D Client disconnected');
+app.get('/api/demo', (req, res) => {
+    res.json({
+        success: true,
+        message: 'S.I.D v2.0 KI-POWERED Demo für OktimusPrime56',
+        demo: {
+            signal: { signal: 'HOLD', confidence: 85, reasoning: 'KI-Demo-Modus' },
+            sentiment: { score: 72, trend: 'leicht positiv' },
+            portfolio: { totalValue: 1000, safeSavings: 800, tradingCapital: 200 }
+        },
+        timestamp: new Date().toISOString()
     });
 });
 
-// Start Server
+// WebSocket
+const wss = new WebSocket.Server({ server, path: '/ws' });
+wss.on('connection', (ws) => {
+    console.log('📱🤖 S.I.D Client connected');
+    ws.send(JSON.stringify({
+        type: 'connected',
+        message: 'S.I.D v2.0 KI-POWERED ready',
+        owner: 'OktimusPrime56'
+    }));
+});
+
+// WICHTIG: Keine catch-all Route hier!
+// Frontend wird von Vercel Static Hosting bedient
+
 server.listen(PORT, () => {
     console.log('🚀🤖 S.I.D v2.0 KI-POWERED Server running on port ' + PORT);
     console.log('👤 Owner: OktimusPrime56'); 
-    console.log('🤖 AI Features: Ready');
-    console.log('📊 APIs: Ready');
-    console.log('🔒 Security: Ultra-Safe Mode');
 });
 
 module.exports = app;
