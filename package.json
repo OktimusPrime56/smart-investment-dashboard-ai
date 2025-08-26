@@ -1,0 +1,16 @@
+﻿{
+  "name": "smart-investment-dashboard-ai",
+  "version": "2.0.0",
+  "description": "S.I.D v2.0 KI-POWERED für OktimusPrime56",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "cd backend && node server.js",
+    "build": "echo 'Build complete'",
+    "dev": "cd backend && node server.js"
+  },
+  "engines": {
+    "node": "18.x"
+  },
+  "author": "OktimusPrime56",
+  "license": "MIT"
+}

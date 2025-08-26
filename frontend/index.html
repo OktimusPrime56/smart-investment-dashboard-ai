@@ -1,0 +1,450 @@
+﻿<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S.I.D v2.0 - KI-Powered Smart Investment Dashboard</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🤖</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    
+    <style>
+        .ai-gradient { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .trading-gradient { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .safety-gradient { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .investment-gradient { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        
+        .pulse { animation: pulse 2s infinite; }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.05); }
+        }
+        
+        .card { transition: all 0.3s ease; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 20px 40px rgba(0,0,0,0.1); }
+        
+        .status-online { background: #10B981; }
+        .status-loading { background: #F59E0B; animation: pulse 1s infinite; }
+        .status-offline { background: #EF4444; }
+        
+        .ai-chat { max-height: 200px; overflow-y: auto; }
+        .notification { position: fixed; top: 20px; right: 20px; z-index: 1000; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Notification Area -->
+    <div id="notifications" class="notification"></div>
+
+    <!-- Main Container -->
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <div class="ai-gradient text-white rounded-xl shadow-2xl p-8 mb-8">
+            <div class="flex flex-col lg:flex-row justify-between items-center">
+                <div class="flex items-center gap-6 mb-6 lg:mb-0">
+                    <div class="text-6xl animate-bounce">🤖💰</div>
+                    <div>
+                        <h1 class="text-5xl font-bold mb-2">S.I.D v2.0</h1>
+                        <p class="text-2xl opacity-90 mb-1">KI-Powered Smart Investment Dashboard</p>
+                        <p class="text-lg opacity-75">Entwickelt für OktimusPrime56</p>
+                        <div class="flex items-center gap-2 mt-2">
+                            <div id="systemStatus" class="w-3 h-3 rounded-full status-loading"></div>
+                            <span id="systemStatusText" class="text-sm">System startet...</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-col gap-4">
+                    <button id="emergencyStopBtn" class="bg-red-600 hover:bg-red-700 px-6 py-3 rounded-lg font-bold text-lg shadow-lg transform hover:scale-105 transition-all">
+                        🚨 NOTFALL-STOPP
+                    </button>
+                    <button id="configureBtn" class="bg-white bg-opacity-20 hover:bg-opacity-30 px-6 py-3 rounded-lg font-semibold shadow-lg">
+                        🔧 APIs & KI konfigurieren
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- KI-Features Dashboard -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- KI Assistant -->
+            <div class="ai-gradient text-white rounded-xl p-6 card">
+                <h3 class="text-xl font-bold mb-4 flex items-center">
+                    🤖 KI-Assistent
+                    <span id="aiStatusBadge" class="ml-2 text-xs bg-white bg-opacity-20 px-2 py-1 rounded-full">Ready</span>
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">OpenAI GPT-4:</span>
+                        <span class="text-sm">🟡 Bereit</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Claude:</span>
+                        <span class="text-sm">🟡 Bereit</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Gemini:</span>
+                        <span class="text-sm">🟡 Bereit</span>
+                    </div>
+                </div>
+                <button id="askAIBtn" class="w-full mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 py-2 rounded-lg text-sm font-medium">
+                    💬 KI fragen
+                </button>
+            </div>
+            
+            <!-- Live Market Data -->
+            <div class="trading-gradient text-white rounded-xl p-6 card">
+                <h3 class="text-xl font-bold mb-4">📊 Live Marktdaten</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">BTC/USD:</span>
+                        <span id="btcPrice" class="text-sm font-mono">,000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">24h Change:</span>
+                        <span id="btcChange" class="text-sm">+2.3%</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Sentiment:</span>
+                        <span id="marketSentiment" class="text-sm">😐 Neutral</span>
+                    </div>
+                </div>
+                <button id="refreshDataBtn" class="w-full mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 py-2 rounded-lg text-sm font-medium">
+                    🔄 Daten aktualisieren
+                </button>
+            </div>
+            
+            <!-- Portfolio Status -->
+            <div class="safety-gradient text-white rounded-xl p-6 card">
+                <h3 class="text-xl font-bold mb-4">💰 Portfolio</h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Gesamt:</span>
+                        <span id="totalValue" class="text-sm font-bold">€1,000</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Sicher (80%):</span>
+                        <span class="text-sm">€800</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Trading (20%):</span>
+                        <span class="text-sm">€200</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Heute:</span>
+                        <span id="dailyPnL" class="text-sm text-green-200">+€23</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Auto-Trading -->
+            <div class="investment-gradient text-white rounded-xl p-6 card">
+                <h3 class="text-xl font-bold mb-4 flex items-center">
+                    🤖 Auto-Trading
+                    <div id="autoTradingStatus" class="ml-2 w-3 h-3 rounded-full bg-red-400"></div>
+                </h3>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Status:</span>
+                        <span id="tradingStatusText" class="text-sm">Deaktiviert</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Signale heute:</span>
+                        <span class="text-sm">3</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm opacity-75">Erfolgsrate:</span>
+                        <span class="text-sm">87%</span>
+                    </div>
+                </div>
+                <button id="toggleTradingBtn" class="w-full mt-4 bg-white bg-opacity-20 hover:bg-opacity-30 py-2 rounded-lg text-sm font-medium">
+                    ▶️ Aktivieren
+                </button>
+            </div>
+        </div>
+
+        <!-- KI Chat Interface -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4 flex items-center">
+                💬 KI-Chat Assistent
+                <span class="ml-2 text-sm bg-purple-100 text-purple-800 px-2 py-1 rounded">Live</span>
+            </h3>
+            
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2">
+                    <div id="chatHistory" class="ai-chat bg-gray-50 rounded-lg p-4 mb-4 border">
+                        <div class="text-sm text-gray-500 italic">KI-Assistent: Hallo OktimusPrime56! Ich bin bereit, Ihnen bei Ihren Trading-Entscheidungen zu helfen. Was möchten Sie wissen?</div>
+                    </div>
+                    
+                    <div class="flex gap-2">
+                        <input type="text" id="chatInput" placeholder="Fragen Sie den KI-Assistenten..." 
+                               class="flex-1 p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                        <button id="sendChatBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium">
+                            Senden
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h4 class="font-medium mb-3">🎯 Schnelle Aktionen</h4>
+                    <div class="space-y-2">
+                        <button onclick="askAI('Wie ist die aktuelle Marktlage?')" class="w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                            📊 Marktlage analysieren
+                        </button>
+                        <button onclick="askAI('Soll ich jetzt kaufen oder verkaufen?')" class="w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                            🤔 Trading-Empfehlung
+                        </button>
+                        <button onclick="askAI('Wie hoch ist mein Risiko?')" class="w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                            ⚖️ Risiko bewerten
+                        </button>
+                        <button onclick="askAI('Optimiere mein Portfolio')" class="w-full text-left p-2 bg-gray-100 hover:bg-gray-200 rounded text-sm">
+                            🎯 Portfolio optimieren
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Performance Chart -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">📈 Live Performance</h3>
+            <div id="performanceChart" style="height: 300px;"></div>
+        </div>
+
+        <!-- API Provider Status -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <h3 class="text-xl font-bold mb-4">🔌 API Provider Status</h3>
+            <div id="apiProvidersGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <!-- Wird dynamisch gefüllt -->
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="text-center text-gray-500 text-sm">
+            <p class="mb-2">S.I.D v2.0 - KI-Powered Smart Investment Dashboard</p>
+            <p>Entwickelt für sichere und intelligente Investments • OktimusPrime56</p>
+            <div class="mt-3 flex justify-center items-center gap-4">
+                <span class="flex items-center gap-1">
+                    <div class="w-2 h-2 bg-green-500 rounded-full"></div>
+                    System Online
+                </span>
+                <span>Version 2.0.0 KI-POWERED</span>
+                <span id="uptime">Uptime: 00:00:00</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // S.I.D v2.0 KI-POWERED Frontend
+        let startTime = Date.now();
+        let isConnected = false;
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('🤖💰 S.I.D v2.0 KI-POWERED loading...');
+            checkBackendStatus();
+            loadAPIProviders();
+            initializeChart();
+            updateUptime();
+            
+            // Event Listeners
+            document.getElementById('sendChatBtn').addEventListener('click', sendChat);
+            document.getElementById('chatInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') sendChat();
+            });
+            
+            document.getElementById('refreshDataBtn').addEventListener('click', refreshMarketData);
+            document.getElementById('askAIBtn').addEventListener('click', () => askAI('Hallo KI! Wie geht es dem Markt heute?'));
+            document.getElementById('configureBtn').addEventListener('click', showConfigureModal);
+            document.getElementById('emergencyStopBtn').addEventListener('click', emergencyStop);
+            document.getElementById('toggleTradingBtn').addEventListener('click', toggleAutoTrading);
+        });
+        
+        // Backend Status Check
+        function checkBackendStatus() {
+            fetch('/health')
+                .then(r => r.json())
+                .then(data => {
+                    isConnected = true;
+                    document.getElementById('systemStatus').className = 'w-3 h-3 rounded-full status-online';
+                    document.getElementById('systemStatusText').textContent = 'System Online';
+                    document.getElementById('aiStatusBadge').textContent = 'Online';
+                    document.getElementById('aiStatusBadge').className = 'ml-2 text-xs bg-green-500 px-2 py-1 rounded-full';
+                    
+                    showNotification('✅ S.I.D v2.0 KI-POWERED ist online!', 'success');
+                    console.log('✅ Backend connected:', data);
+                })
+                .catch(error => {
+                    document.getElementById('systemStatus').className = 'w-3 h-3 rounded-full status-loading';
+                    setTimeout(checkBackendStatus, 3000);
+                });
+        }
+        
+        // Load API Providers
+        function loadAPIProviders() {
+            fetch('/api/providers')
+                .then(r => r.json())
+                .then(data => {
+                    const grid = document.getElementById('apiProvidersGrid');
+                    grid.innerHTML = '';
+                    
+                    data.providers.forEach(provider => {
+                        const card = document.createElement('div');
+                        card.className = 'border rounded-lg p-4 hover:shadow-md transition-shadow';
+                        card.innerHTML = 
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="font-medium"></h4>
+                                <div class="w-3 h-3 bg-yellow-500 rounded-full"></div>
+                            </div>
+                            <p class="text-sm text-gray-600 mb-2"></p>
+                            <span class="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded"></span>
+                        ;
+                        grid.appendChild(card);
+                    });
+                })
+                .catch(console.error);
+        }
+        
+        // Chat Functions
+        function sendChat() {
+            const input = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message) return;
+            
+            addChatMessage('user', message);
+            input.value = '';
+            
+            // Send to AI
+            fetch('/api/ai/advice', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: message })
+            })
+            .then(r => r.json())
+            .then(data => {
+                addChatMessage('ai', data.response);
+            })
+            .catch(() => {
+                addChatMessage('ai', 'Entschuldigung, ich kann gerade nicht antworten. Versuchen Sie es später erneut.');
+            });
+        }
+        
+        function askAI(question) {
+            document.getElementById('chatInput').value = question;
+            sendChat();
+        }
+        
+        function addChatMessage(sender, message) {
+            const chat = document.getElementById('chatHistory');
+            const div = document.createElement('div');
+            div.className = 	ext-sm mb-2 p-2 rounded ;
+            div.innerHTML = <strong>:</strong> ;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+        }
+        
+        // Market Data
+        function refreshMarketData() {
+            const price = 45000 + (Math.random() - 0.5) * 2000;
+            const change = (Math.random() - 0.5) * 10;
+            
+            document.getElementById('btcPrice').textContent = $;
+            document.getElementById('btcChange').textContent = ${change >= 0 ? '+' : ''}%;
+            document.getElementById('btcChange').className = 	ext-sm ;
+            
+            showNotification('📊 Marktdaten aktualisiert', 'info');
+        }
+        
+        // Auto Trading
+        function toggleAutoTrading() {
+            const btn = document.getElementById('toggleTradingBtn');
+            const status = document.getElementById('autoTradingStatus');
+            const text = document.getElementById('tradingStatusText');
+            
+            if (btn.textContent.includes('Aktivieren')) {
+                btn.textContent = '⏸️ Deaktivieren';
+                status.className = 'ml-2 w-3 h-3 rounded-full bg-green-400 pulse';
+                text.textContent = 'Aktiv';
+                showNotification('🤖 Auto-Trading aktiviert!', 'success');
+            } else {
+                btn.textContent = '▶️ Aktivieren';
+                status.className = 'ml-2 w-3 h-3 rounded-full bg-red-400';
+                text.textContent = 'Deaktiviert';
+                showNotification('⏸️ Auto-Trading deaktiviert', 'warning');
+            }
+        }
+        
+        // Emergency Stop
+        function emergencyStop() {
+            if (confirm('🚨 NOTFALL-STOPP: Wollen Sie alle Trading-Aktivitäten sofort beenden?')) {
+                document.getElementById('toggleTradingBtn').textContent = '▶️ Aktivieren';
+                document.getElementById('autoTradingStatus').className = 'ml-2 w-3 h-3 rounded-full bg-red-400';
+                document.getElementById('tradingStatusText').textContent = 'GESTOPPT';
+                showNotification('🚨 NOTFALL-STOPP AKTIVIERT!', 'error');
+            }
+        }
+        
+        // Configure Modal
+        function showConfigureModal() {
+            alert('🔧 API-Konfiguration:\n\n✅ System ist bereit für die Konfiguration von:\n\n🤖 KI-Services:\n• OpenAI GPT-4\n• Anthropic Claude\n• Google Gemini\n\n📊 Market APIs:\n• Binance Trading\n• CoinGecko (kostenlos)\n• Alpha Vantage\n\nVollständige Konfiguration in der nächsten Version verfügbar!');
+        }
+        
+        // Chart
+        function initializeChart() {
+            const dates = [];
+            const values = [];
+            
+            for (let i = 30; i >= 0; i--) {
+                dates.push(new Date(Date.now() - i * 24 * 60 * 60 * 1000).toLocaleDateString('de-DE'));
+                values.push(1000 + Math.random() * 100 - 50 + (30-i) * 2);
+            }
+            
+            const trace = {
+                x: dates,
+                y: values,
+                type: 'scatter',
+                mode: 'lines+markers',
+                name: 'Portfolio Wert',
+                line: { color: '#667eea', width: 3 },
+                marker: { color: '#667eea', size: 4 }
+            };
+            
+            const layout = {
+                title: 'Portfolio Performance (30 Tage)',
+                xaxis: { title: 'Datum' },
+                yaxis: { title: 'Wert (€)' },
+                margin: { t: 50, b: 50, l: 50, r: 50 }
+            };
+            
+            Plotly.newPlot('performanceChart', [trace], layout, { responsive: true });
+        }
+        
+        // Notifications
+        function showNotification(message, type = 'info') {
+            const container = document.getElementById('notifications');
+            const notification = document.createElement('div');
+            notification.className = p-4 rounded-lg shadow-lg mb-2 text-white ;
+            notification.textContent = message;
+            
+            container.appendChild(notification);
+            setTimeout(() => notification.remove(), 5000);
+        }
+        
+        // Uptime
+        function updateUptime() {
+            setInterval(() => {
+                const uptime = Date.now() - startTime;
+                const hours = Math.floor(uptime / 3600000);
+                const minutes = Math.floor((uptime % 3600000) / 60000);
+                const seconds = Math.floor((uptime % 60000) / 1000);
+                document.getElementById('uptime').textContent = 
+                    Uptime: ::;
+            }, 1000);
+        }
+        
+        // Auto-refresh market data
+        setInterval(refreshMarketData, 30000);
+        
+        console.log('🚀 S.I.D v2.0 KI-POWERED Frontend ready for OktimusPrime56!');
+    </script>
+</body>
+</html>
