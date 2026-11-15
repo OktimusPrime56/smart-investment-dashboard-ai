@@ -243,6 +243,7 @@
             console.log('🤖💰 S.I.D v2.0 KI-POWERED loading...');
             checkBackendStatus();
             loadAPIProviders();
+            refreshMarketData();
             initializeChart();
             updateUptime();
             
@@ -252,7 +253,7 @@
                 if (e.key === 'Enter') sendChat();
             });
             
-            document.getElementById('refreshDataBtn').addEventListener('click', refreshMarketData);
+            document.getElementById('refreshDataBtn').addEventListener('click', () => refreshMarketData(true));
             document.getElementById('askAIBtn').addEventListener('click', () => askAI('Hallo KI! Wie geht es dem Markt heute?'));
             document.getElementById('configureBtn').addEventListener('click', showConfigureModal);
             document.getElementById('emergencyStopBtn').addEventListener('click', emergencyStop);
@@ -343,15 +344,28 @@
         }
         
         // Market Data
-        function refreshMarketData() {
-            const price = 45000 + (Math.random() - 0.5) * 2000;
-            const change = (Math.random() - 0.5) * 10;
-            
-            document.getElementById('btcPrice').textContent = `$${price.toFixed(0).toLocaleString()}`;
-            document.getElementById('btcChange').textContent = `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
-            document.getElementById('btcChange').className = `text-sm ${change >= 0 ? 'text-green-200' : 'text-red-200'}`;
-            
-            showNotification('📊 Marktdaten aktualisiert', 'info');
+        // Echte Kurse von CoinGecko über das Backend
+        function refreshMarketData(manual) {
+            return fetch('/api/market/prices?ids=bitcoin')
+                .then(res => res.json())
+                .then(data => {
+                    const btc = data.success && data.coins && data.coins[0];
+                    if (!btc) throw new Error(data.error || 'Keine Kursdaten');
+
+                    const change = Number(btc.change24h) || 0;
+                    document.getElementById('btcPrice').textContent =
+                        '$' + Math.round(btc.usd).toLocaleString('en-US');
+                    document.getElementById('btcChange').textContent =
+                        `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+                    document.getElementById('btcChange').className =
+                        `text-sm ${change >= 0 ? 'text-green-200' : 'text-red-200'}`;
+
+                    if (manual) showNotification('📊 Marktdaten aktualisiert (CoinGecko)', 'info');
+                })
+                .catch(err => {
+                    console.error('Marktdaten-Fehler:', err);
+                    if (manual) showNotification('⚠️ Marktdaten nicht verfügbar', 'error');
+                });
         }
         
         // Auto Trading

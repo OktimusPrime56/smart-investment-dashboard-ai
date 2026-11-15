@@ -5,6 +5,7 @@ const compression = require('compression');
 const path = require('path');
 const WebSocket = require('ws');
 const http = require('http');
+const coingecko = require('./coingecko');
 
 const app = express();
 const server = http.createServer(app);
@@ -136,6 +137,22 @@ app.post('/api/ai/advice', (req, res) => {
     });
 });
 
+// Echte Marktdaten von CoinGecko, z. B. /api/market/prices?ids=bitcoin,ethereum
+app.get('/api/market/prices', async (req, res) => {
+    try {
+        const result = await coingecko.getPrices(req.query.ids);
+        res.json({ success: true, source: 'CoinGecko', ...result });
+    } catch (err) {
+        console.error('CoinGecko-Fehler:', err.message);
+        res.status(err.status === 400 ? 400 : 502).json({
+            success: false,
+            source: 'CoinGecko',
+            error: err.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
+
 // Serve Frontend
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../frontend/index.html'));
@@ -153,19 +170,24 @@ wss.on('connection', (ws) => {
         features: ['ai-signals', 'live-data', 'auto-trading']
     }));
     
-    // Demo updates every 10 seconds
-    const interval = setInterval(() => {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(JSON.stringify({
-                type: 'market_update',
-                data: {
-                    price: 45000 + (Math.random() - 0.5) * 1000,
-                    change: (Math.random() - 0.5) * 5,
-                    timestamp: Date.now()
-                }
-            }));
+    // Echte BTC-Kurse von CoinGecko alle 30 Sekunden (Cache: 60 s)
+    const sendMarketUpdate = async () => {
+        try {
+            const { coins } = await coingecko.getPrices('bitcoin');
+            const btc = coins[0];
+            if (btc && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    type: 'market_update',
+                    source: 'CoinGecko',
+                    data: { price: btc.usd, change: btc.change24h, timestamp: Date.now() }
+                }));
+            }
+        } catch (err) {
+            console.error('CoinGecko-Fehler (WebSocket):', err.message);
         }
-    }, 10000);
+    };
+    sendMarketUpdate();
+    const interval = setInterval(sendMarketUpdate, 30000);
     
     ws.on('close', () => {
         clearInterval(interval);
