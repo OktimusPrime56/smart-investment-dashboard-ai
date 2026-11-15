@@ -6,6 +6,7 @@ const path = require('path');
 const WebSocket = require('ws');
 const http = require('http');
 const coingecko = require('./coingecko');
+const claude = require('./claude');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,7 +52,7 @@ app.get('/api/providers', (req, res) => {
                 id: 'ai_assistant',
                 name: 'KI Trading Assistant',
                 type: 'ai',
-                description: 'OpenAI GPT-4 für intelligente Trading-Entscheidungen',
+                description: 'Anthropic Claude für Markteinschätzungen und Trading-Fragen',
                 status: 'ready',
                 capabilities: ['trading-signals', 'market-analysis', 'risk-assessment']
             },
@@ -125,16 +126,60 @@ app.get('/api/demo', (req, res) => {
     });
 });
 
-app.post('/api/ai/advice', (req, res) => {
-    const { query } = req.body;
-    res.json({
-        success: true,
-        query: query || 'Demo-Anfrage',
-        response: 'Als KI-Trading-Assistent empfehle ich eine vorsichtige Strategie mit 80% sicheren Anlagen und 20% aktivem Trading. Der aktuelle Markt zeigt moderate Volatilität.',
-        confidence: 78,
-        model: 'Demo-Modus',
-        timestamp: new Date().toISOString()
-    });
+app.post('/api/ai/advice', async (req, res) => {
+    const query = typeof req.body.query === 'string' ? req.body.query.trim() : '';
+
+    // Ohne ANTHROPIC_API_KEY: Demo-Antwort wie bisher
+    if (!claude.isConfigured()) {
+        return res.json({
+            success: true,
+            query: query || 'Demo-Anfrage',
+            response: 'Als KI-Trading-Assistent empfehle ich eine vorsichtige Strategie mit 80% sicheren Anlagen und 20% aktivem Trading. Der aktuelle Markt zeigt moderate Volatilität. (Demo-Modus: ANTHROPIC_API_KEY ist nicht gesetzt.)',
+            model: 'Demo-Modus',
+            timestamp: new Date().toISOString()
+        });
+    }
+
+    if (!query) {
+        return res.status(400).json({ success: false, response: 'Bitte stelle eine Frage.', error: 'Leere Anfrage' });
+    }
+
+    // Aktuelle Kurse als Kontext mitgeben; ohne Kurse trotzdem antworten
+    let coins = [];
+    try {
+        ({ coins } = await coingecko.getPrices());
+    } catch (err) {
+        console.error('CoinGecko-Fehler (KI-Kontext):', err.message);
+    }
+
+    try {
+        const advice = await claude.getAdvice(query, coins);
+        res.json({
+            success: true,
+            query,
+            response: advice.text,
+            model: advice.model,
+            fallbackUsed: Boolean(advice.fallbackUsed),
+            refused: Boolean(advice.refused),
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        const { Anthropic } = claude;
+        let status = 502;
+        let message = 'Die KI ist gerade nicht erreichbar. Bitte später erneut versuchen.';
+        if (err instanceof Anthropic.AuthenticationError) {
+            status = 500;
+            message = 'Der API-Schlüssel für Claude ist ungültig.';
+        } else if (err instanceof Anthropic.RateLimitError) {
+            status = 429;
+            message = 'Zu viele Anfragen an die KI. Bitte kurz warten.';
+        } else if (err instanceof Anthropic.APIError) {
+            console.error(`Claude-API-Fehler ${err.status}:`, err.message);
+        } else {
+            console.error('Claude-Fehler:', err);
+        }
+        res.status(status).json({ success: false, response: message, error: message, timestamp: new Date().toISOString() });
+    }
 });
 
 // Echte Marktdaten von CoinGecko, z. B. /api/market/prices?ids=bitcoin,ethereum

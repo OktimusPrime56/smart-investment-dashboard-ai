@@ -313,8 +313,9 @@
             
             addChatMessage('user', message);
             input.value = '';
-            
-            // Send to AI
+            const reply = addChatMessage('ai', '⏳ denkt nach …');
+
+            // Send to AI (Claude über das Backend)
             fetch('/api/ai/advice', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -322,10 +323,10 @@
             })
             .then(r => r.json())
             .then(data => {
-                addChatMessage('ai', data.response);
+                reply.textContent = data.response || data.error || 'Keine Antwort erhalten.';
             })
             .catch(() => {
-                addChatMessage('ai', 'Entschuldigung, ich kann gerade nicht antworten. Versuchen Sie es später erneut.');
+                reply.textContent = 'Entschuldigung, ich kann gerade nicht antworten. Versuchen Sie es später erneut.';
             });
         }
         
@@ -338,9 +339,16 @@
             const chat = document.getElementById('chatHistory');
             const div = document.createElement('div');
             div.className = `text-sm mb-2 p-2 rounded ${sender === 'user' ? 'bg-blue-100 text-right' : 'bg-gray-100'}`;
-            div.innerHTML = `<strong>${sender === 'user' ? 'Sie' : 'KI-Assistent'}:</strong> ${message}`;
+            // Als Text einfügen (kein innerHTML), damit HTML in Nachrichten nicht ausgeführt wird
+            const label = document.createElement('strong');
+            label.textContent = `${sender === 'user' ? 'Sie' : 'KI-Assistent'}: `;
+            const text = document.createElement('span');
+            text.style.whiteSpace = 'pre-wrap';
+            text.textContent = message;
+            div.append(label, text);
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
+            return text;
         }
         
         // Market Data
